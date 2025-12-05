@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Smart Stock Management - Setup Script
+# Your Full Stack App - Setup Script
 # This script sets up both Laravel backend and React frontend
 
 set -e
 
 echo "========================================="
-echo "Smart Stock Management - Setup"
+echo "Your Full Stack App - Setup"
 echo "========================================="
 echo ""
 
@@ -79,7 +79,7 @@ if [ -d "backend" ]; then
             sed -i 's/DB_USERNAME=root/DB_USERNAME=laravel/' .env && \
             sed -i 's/# DB_PASSWORD=/DB_PASSWORD=secret/' .env && \
             sed -i 's/REDIS_HOST=127.0.0.1/REDIS_HOST=redis/' .env && \
-            sed -i 's/APP_NAME=Laravel/APP_NAME=\"Smart Stock Management\"/' .env && \
+            sed -i 's/APP_NAME=Laravel/APP_NAME=\"Your App Name\"/' .env && \
             echo '' >> .env && \
             echo '# Elasticsearch Configuration' >> .env && \
             echo 'ELASTICSEARCH_HOST=elasticsearch' >> .env && \
