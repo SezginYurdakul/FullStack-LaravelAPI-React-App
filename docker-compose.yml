@@ -28,9 +28,9 @@ services:
     volumes:
       - ./backend:/var/www/backend
     environment:
-      - DB_CONNECTION=pgsql
-      - DB_HOST=postgres
-      - DB_PORT=5432
+      - DB_CONNECTION=${DB_CONNECTION:-pgsql}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_DATABASE=${DB_DATABASE:-laravel}
       - DB_USERNAME=${DB_USERNAME:-laravel}
       - DB_PASSWORD=${DB_PASSWORD:-secret}
@@ -39,14 +39,10 @@ services:
       - REDIS_PORT=6379
       - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
-    depends_on:
-      - postgres
-      - redis
-      - elasticsearch
     networks:
       - sms_network
 
-  # PostgreSQL Database
+  # PostgreSQL Database (Optional)
   postgres:
     image: postgres:16-alpine
     container_name: sms_postgres
@@ -62,8 +58,33 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - sms_network
+    profiles:
+      - postgres
+      - database
+      - all
 
-  # Redis Cache
+  # MySQL Database (Optional)
+  mysql:
+    image: mysql:8.0-debian
+    container_name: sms_mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-laravel}
+      MYSQL_USER: ${DB_USERNAME:-laravel}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - sms_network
+    profiles:
+      - mysql
+      - database
+      - all
+
+  # Redis Cache (Optional)
   redis:
     image: redis:7-alpine
     container_name: sms_redis
@@ -74,6 +95,9 @@ services:
       - redis_data:/data
     networks:
       - sms_network
+    profiles:
+      - redis
+      - all
 
   # Node.js for React Development
   node:
@@ -90,7 +114,7 @@ services:
     networks:
       - sms_network
 
-  # Elasticsearch
+  # Elasticsearch (Optional)
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
     container_name: sms_elasticsearch
@@ -111,8 +135,11 @@ services:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
       - sms_network
+    profiles:
+      - elasticsearch
+      - all
 
-  # Kibana (Elasticsearch UI)
+  # Kibana (Elasticsearch UI - Optional)
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.3
     container_name: sms_kibana
@@ -125,8 +152,11 @@ services:
       - elasticsearch
     networks:
       - sms_network
+    profiles:
+      - elasticsearch
+      - all
 
-  # pgAdmin (Optional - PostgreSQL GUI)
+  # pgAdmin (PostgreSQL GUI - Only for PostgreSQL)
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: sms_pgadmin
@@ -142,6 +172,10 @@ services:
       - postgres
     networks:
       - sms_network
+    profiles:
+      - postgres
+      - database
+      - all
 
 networks:
   sms_network:
@@ -149,6 +183,8 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  mysql_data:
     driver: local
   redis_data:
     driver: local

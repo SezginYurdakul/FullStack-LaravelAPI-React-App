@@ -37,6 +37,47 @@ if [ "$INSTALL_TYPE" != "1" ] && [ "$INSTALL_TYPE" != "2" ]; then
 fi
 
 echo ""
+echo -e "${BLUE}Database Selection:${NC}"
+echo "Choose your database:"
+echo "  1) PostgreSQL (Default)"
+echo "  2) MySQL"
+echo ""
+read -p "Enter your choice (1 or 2) [default: 1]: " DB_CHOICE
+DB_CHOICE=${DB_CHOICE:-1}
+
+if [ "$DB_CHOICE" = "1" ]; then
+    DB_TYPE="postgres"
+    DB_CONNECTION="pgsql"
+    DB_PORT="5432"
+    echo -e "${GREEN}  ✓ PostgreSQL selected${NC}"
+elif [ "$DB_CHOICE" = "2" ]; then
+    DB_TYPE="mysql"
+    DB_CONNECTION="mysql"
+    DB_PORT="3306"
+    echo -e "${GREEN}  ✓ MySQL selected${NC}"
+else
+    echo -e "${RED}Invalid choice. Defaulting to PostgreSQL.${NC}"
+    DB_TYPE="postgres"
+    DB_CONNECTION="pgsql"
+    DB_PORT="5432"
+fi
+
+echo ""
+echo -e "${BLUE}Optional Services:${NC}"
+echo "Choose which additional services you want to install:"
+echo ""
+
+# Ask about Redis
+read -p "Install Redis for caching? (y/n) [default: y]: " INSTALL_REDIS
+INSTALL_REDIS=${INSTALL_REDIS:-y}
+INSTALL_REDIS=$(echo "$INSTALL_REDIS" | tr '[:upper:]' '[:lower:]')
+
+# Ask about Elasticsearch
+read -p "Install Elasticsearch + Kibana for search? (y/n) [default: y]: " INSTALL_ELASTICSEARCH
+INSTALL_ELASTICSEARCH=${INSTALL_ELASTICSEARCH:-y}
+INSTALL_ELASTICSEARCH=$(echo "$INSTALL_ELASTICSEARCH" | tr '[:upper:]' '[:lower:]')
+
+echo ""
 echo -e "${BLUE}Step 1: Creating Laravel Backend...${NC}"
 
 if [ ! -d "backend" ]; then
@@ -65,27 +106,41 @@ if [ -d "backend" ]; then
     chmod -R 755 backend 2>/dev/null || true
     chmod -R 777 backend/storage backend/bootstrap/cache 2>/dev/null || true
 
-    # Configure .env file for PostgreSQL
+    # Configure .env file
     if [ -f "backend/.env" ]; then
-        echo "  - Configuring backend .env for PostgreSQL..."
-        docker run --rm -v "$(pwd)/backend":/app -w /app alpine:latest sh -c "
-            sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env && \
-            sed -i 's/# DB_HOST=127.0.0.1/DB_HOST=postgres/' .env && \
-            sed -i 's/DB_HOST=127.0.0.1/DB_HOST=postgres/' .env && \
-            sed -i 's/# DB_PORT=3306/DB_PORT=5432/' .env && \
-            sed -i 's/DB_PORT=3306/DB_PORT=5432/' .env && \
-            sed -i 's/# DB_DATABASE=laravel/DB_DATABASE=laravel/' .env && \
-            sed -i 's/# DB_USERNAME=root/DB_USERNAME=laravel/' .env && \
-            sed -i 's/DB_USERNAME=root/DB_USERNAME=laravel/' .env && \
-            sed -i 's/# DB_PASSWORD=/DB_PASSWORD=secret/' .env && \
-            sed -i 's/REDIS_HOST=127.0.0.1/REDIS_HOST=redis/' .env && \
-            sed -i 's/APP_NAME=Laravel/APP_NAME=\"Your App Name\"/' .env && \
-            echo '' >> .env && \
-            echo '# Elasticsearch Configuration' >> .env && \
-            echo 'ELASTICSEARCH_HOST=elasticsearch' >> .env && \
-            echo 'ELASTICSEARCH_PORT=9200' >> .env && \
-            echo 'SCOUT_DRIVER=elasticsearch' >> .env
-        "
+        echo "  - Configuring backend .env..."
+
+        # Base configuration
+        docker run --rm -v "$(pwd)/backend":/app -w /app -e DB_CONNECTION="$DB_CONNECTION" -e DB_TYPE="$DB_TYPE" -e DB_PORT="$DB_PORT" alpine:latest sh -c '
+            sed -i "s/DB_CONNECTION=sqlite/DB_CONNECTION=${DB_CONNECTION}/" .env && \
+            sed -i "s/# DB_HOST=127.0.0.1/DB_HOST=${DB_TYPE}/" .env && \
+            sed -i "s/DB_HOST=127.0.0.1/DB_HOST=${DB_TYPE}/" .env && \
+            sed -i "s/# DB_PORT=3306/DB_PORT=${DB_PORT}/" .env && \
+            sed -i "s/DB_PORT=3306/DB_PORT=${DB_PORT}/" .env && \
+            sed -i "s/# DB_DATABASE=laravel/DB_DATABASE=laravel/" .env && \
+            sed -i "s/# DB_USERNAME=root/DB_USERNAME=laravel/" .env && \
+            sed -i "s/DB_USERNAME=root/DB_USERNAME=laravel/" .env && \
+            sed -i "s/# DB_PASSWORD=/DB_PASSWORD=secret/" .env && \
+            sed -i "s/APP_NAME=Laravel/APP_NAME=\\\"Your App Name\\\"/" .env
+        '
+
+        # Add Redis configuration if selected
+        if [ "$INSTALL_REDIS" = "y" ]; then
+            docker run --rm -v "$(pwd)/backend":/app -w /app alpine:latest sh -c "
+                sed -i 's/REDIS_HOST=127.0.0.1/REDIS_HOST=redis/' .env
+            "
+        fi
+
+        # Add Elasticsearch configuration if selected
+        if [ "$INSTALL_ELASTICSEARCH" = "y" ]; then
+            docker run --rm -v "$(pwd)/backend":/app -w /app alpine:latest sh -c "
+                echo '' >> .env && \
+                echo '# Elasticsearch Configuration' >> .env && \
+                echo 'ELASTICSEARCH_HOST=elasticsearch' >> .env && \
+                echo 'ELASTICSEARCH_PORT=9200' >> .env && \
+                echo 'SCOUT_DRIVER=elasticsearch' >> .env
+            "
+        fi
     fi
 
     echo -e "${GREEN}  ✓ Backend configuration completed${NC}"
@@ -170,6 +225,26 @@ echo -e "${GREEN}  ✓ Frontend configuration completed${NC}"
 
 echo ""
 echo -e "${BLUE}Step 5: Building Docker Images...${NC}"
+
+# Build compose profiles based on selections
+COMPOSE_PROFILES="$DB_TYPE"
+
+if [ "$INSTALL_REDIS" = "y" ]; then
+    COMPOSE_PROFILES="$COMPOSE_PROFILES,redis"
+fi
+
+if [ "$INSTALL_ELASTICSEARCH" = "y" ]; then
+    COMPOSE_PROFILES="$COMPOSE_PROFILES,elasticsearch"
+fi
+
+# Export environment variables for docker compose
+export COMPOSE_PROFILES
+export DB_CONNECTION
+export DB_HOST="$DB_TYPE"
+export DB_PORT
+echo "  - Selected profiles: $COMPOSE_PROFILES"
+echo "  - Database: $DB_TYPE ($DB_CONNECTION:$DB_PORT)"
+
 docker compose build
 
 echo ""
@@ -245,15 +320,28 @@ else
 fi
 echo ""
 echo -e "${BLUE}Database & Tools:${NC}"
-echo "  - pgAdmin:          http://localhost:5050"
-echo "  - Kibana:           http://localhost:5601"
-echo "  - PostgreSQL:       localhost:5432"
-echo "  - Elasticsearch:    http://localhost:9200"
-echo "  - Redis:            localhost:6379"
+if [ "$DB_TYPE" = "postgres" ]; then
+    echo "  - PostgreSQL:       localhost:5432"
+    echo "  - pgAdmin:          http://localhost:5050"
+elif [ "$DB_TYPE" = "mysql" ]; then
+    echo "  - MySQL:            localhost:3306"
+fi
+if [ "$INSTALL_REDIS" = "y" ]; then
+    echo "  - Redis:            localhost:6379"
+fi
+if [ "$INSTALL_ELASTICSEARCH" = "y" ]; then
+    echo "  - Elasticsearch:    http://localhost:9200"
+    echo "  - Kibana:           http://localhost:5601"
+fi
 echo ""
 echo -e "${BLUE}Default Credentials:${NC}"
-echo "  - Database:         laravel / secret"
-echo "  - pgAdmin:          admin@admin.com / admin"
+if [ "$DB_TYPE" = "postgres" ]; then
+    echo "  - Database:         laravel / secret"
+    echo "  - pgAdmin:          admin@admin.com / admin"
+elif [ "$DB_TYPE" = "mysql" ]; then
+    echo "  - Database:         laravel / secret"
+    echo "  - Root Password:    root_secret"
+fi
 echo ""
 echo -e "${BLUE}Useful Commands:${NC}"
 echo "  - View logs:        docker compose logs -f"
