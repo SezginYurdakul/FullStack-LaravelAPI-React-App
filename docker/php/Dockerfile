@@ -45,16 +45,11 @@ WORKDIR /var/www/backend
 # Copy PHP configuration
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 
-# Add user for laravel application
-RUN addgroup -g 1000 -S www && \
-    adduser -u 1000 -S www -G www
-
-# Copy existing application directory permissions
-COPY --chown=www:www . /var/www/backend
-
-# Change current user to www
-USER www
+# Copy entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["php-fpm"]

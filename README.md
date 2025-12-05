@@ -57,17 +57,35 @@ cd SmartStock
 
 The setup script will automatically:
 - Create Laravel backend project
-- Create React frontend project
+- Create React frontend project (optional)
 - Install all dependencies
 - Configure database connections
 - Build Docker images
 - Start all containers
 - Run database migrations
+- Install Laravel Sanctum for API authentication
 
 ```bash
 chmod +x setup.sh
 ./setup.sh
 ```
+
+**Installation Options:**
+
+When you run the setup script, you'll be prompted to choose:
+
+1. **Full-stack Mode** (Default) - Complete application with Laravel backend + React frontend
+   - ✅ Laravel backend with views and API support
+   - ✅ React frontend with Vite dev server
+   - ✅ All database and caching services
+   - ✅ Perfect for building complete web applications
+
+2. **API-only Mode** - Optimized for REST API development
+   - ✅ Laravel backend optimized for API endpoints
+   - ✅ Unnecessary view files removed
+   - ✅ Laravel Sanctum pre-installed
+   - ✅ All database and caching services
+   - ✅ Perfect for mobile apps, microservices, or separate frontend projects
 
 ### 3. Access the Application
 
