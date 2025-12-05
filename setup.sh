@@ -199,7 +199,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get("/", function () {
     return response()->json([
-        "message" => "Smart Stock Management API",
+        "message" => "API is working",
         "version" => "1.0.0",
         "status" => "active"
     ]);
