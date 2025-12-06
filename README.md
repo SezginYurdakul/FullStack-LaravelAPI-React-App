@@ -1,5 +1,5 @@
 # Full Stack App for Windows OS
-
+## Run setup.sh script in Windows Subsystem for Linux terminal
 
 ## 🚀 Tech Stack
 
