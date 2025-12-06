@@ -83,7 +83,7 @@ echo -e "${BLUE}Step 1: Creating Laravel Backend...${NC}"
 if [ ! -d "backend" ]; then
     if [ "$INSTALL_TYPE" = "2" ]; then
         echo "  - Creating API-only Laravel 12 project..."
-        docker run --rm -v "$(pwd)":/app -w /app composer:latest create-project laravel/laravel backend --prefer-dist
+        docker run --rm -v "$(pwd)":/app -w /app -e COMPOSER_PROCESS_TIMEOUT=600 composer:latest create-project laravel/laravel backend --prefer-dist
         echo -e "${YELLOW}  - Configuring for API-only mode...${NC}"
         # Remove unnecessary web-related files for API-only
         docker run --rm -v "$(pwd)/backend":/app -w /app alpine:latest sh -c "
@@ -93,8 +93,15 @@ if [ ! -d "backend" ]; then
         "
     else
         echo "  - Creating Full-stack Laravel 12 project..."
-        docker run --rm -v "$(pwd)":/app -w /app composer:latest create-project laravel/laravel backend
+        docker run --rm -v "$(pwd)":/app -w /app -e COMPOSER_PROCESS_TIMEOUT=600 composer:latest create-project laravel/laravel backend
     fi
+
+    # Add composer timeout configuration to composer.json
+    if [ -f "backend/composer.json" ]; then
+        echo "  - Configuring Composer timeout..."
+        docker run --rm -v "$(pwd)/backend":/app -w /app composer:latest config process-timeout 600
+    fi
+
     echo -e "${GREEN}  ✓ Backend project created${NC}"
 else
     echo -e "${YELLOW}  ! Backend directory already exists${NC}"
