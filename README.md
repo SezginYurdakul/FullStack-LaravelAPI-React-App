@@ -1,4 +1,4 @@
-# Full Stack App
+# Full Stack App - For Linux OS
 
 
 ## 🚀 Tech Stack
