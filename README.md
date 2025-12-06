@@ -1,4 +1,4 @@
-# Full Stack App
+# Full Stack App for Windows OS
 
 
 ## 🚀 Tech Stack
